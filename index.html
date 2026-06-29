@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>我的完整打卡</title>
+    <style>
+        /* ======== 全局重置 ======== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1 { text-align: center; margin-bottom: 15px; font-size: 24px; }
+
+        /* ======== 标签导航 ======== */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            justify-content: center;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            background: #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+        .tab-btn.active { background: #4caf50; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ======== 通用卡片 ======== */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            transition: 0.2s;
+        }
+        .card .info { flex: 1; min-width: 150px; }
+        .card .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .card .name { font-weight: 600; font-size: 16px; }
+        .card .meta { font-size: 12px; color: #888; margin-top: 2px; }
+
+        /* 按钮样式 */
+        button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            background: #4caf50;
+            color: white;
+            transition: 0.2s;
+        }
+        button:hover { opacity: 0.85; }
+        button.danger { background: #f44336; }
+        button.primary { background: #2196f3; }
+        button.outline { background: transparent; border: 1px solid #ccc; color: #333; }
+
+        /* 输入框 */
+        input, textarea, select {
+            width: 100%;
+            padding: 8px 10px;
+            margin: 4px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        textarea { resize: vertical; min-height: 60px; }
+        select { width: auto; }
+
+        /* ======== 日历样式 ======== */
+        .calendar-container { margin-top: 10px; }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .calendar-header h3 { font-size: 18px; }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+        }
+        .calendar-day.other-month { color: #ccc; }
+        .calendar-day.today { background: #fff3e0; font-weight: bold; }
+        .calendar-day.checked { background: #e8f5e9; color: #2e7d32; }
+        .calendar-day.missed { background: #fce4ec; color: #c62828; }
+        .calendar-day.partial { background: #fff8e1; color: #f57f17; }
+        .calendar-day .badge { font-size: 9px; margin-top: 2px; opacity: 0.7; }
+
+        /* ======== 弹出层 ======== */
+        .modal-overlay {
+            position: fixed;
+            top:0; left:0; right:0; bottom:0;
+            background: rgba(0,0,0,0.3);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            max-width: 90%;
+            width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-content h3 { margin-bottom: 5px; }
+        .modal-content .close-btn {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        .mood-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+        .mood-btn {
+            font-size: 28px;
+            padding: 6px 8px;
+            background: #f0f0f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 2px solid transparent;
+        }
+        .mood-btn.selected { border-color: #4caf50; background: #e8f5e9; }
+        .mood-btn:hover { background: #e0e0e0; }
+
+        /* 记录列表 */
+        .record-item {
+            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+        .record-item .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .record-item .mood { font-size: 20px; margin-right: 6px; }
+        .record-item .duration { color: #888; font-size: 13px; }
+        .record-item .note { margin-top: 4px; color: #555; font-style: italic; font-size: 13px; }
+
+        /* ======== TODO额外样式 ======== */
+        .todo-deadline { font-size: 12px; color: #888; }
+        .todo-done { text-decoration: line-through; color: #4caf50; }
+        .todo-overdue { color: #f44336; }
+        .todo-expiring { color: #ff9800; }
+
+        /* ======== 工具类 ======== */
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .mt-10 { margin-top: 10px; }
+        .mb-10 { margin-bottom: 10px; }
+        .text-center { text-align: center; }
+        .hidden { display: none; }
+        .inline-flex { display: inline-flex; align-items: center; gap: 4px; }
+        .small-gray { font-size: 13px; color: #999; margin-bottom: 10px; }
+
+        @media (max-width: 480px) {
+            .card { flex-direction: column; align-items: flex-start; gap: 6px; }
+            .calendar-day { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>📅 我的打卡</h1>
+
+    <!-- 标签导航 -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="calendar">📆 日历</button>
+        <button class="tab-btn" data-tab="checkin">✅ 打卡</button>
+        <button class="tab-btn" data-tab="todo">📋 TODO</button>
+    </div>
+
+    <!-- ==================== 日历标签 ==================== -->
+    <div id="calendar" class="tab-content active">
+        <div class="calendar-header">
+            <button class="outline" id="prevMonth">◀</button>
+            <h3 id="monthTitle">2026年6月</h3>
+            <button class="outline" id="nextMonth">▶</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid">
+            <!-- 由JS生成 -->
+        </div>
+        <div id="dayDetail" style="margin-top: 12px;">
+            <p style="color:#888; text-align:center;">点击日期查看详细记录</p>
+        </div>
+    </div>
+
+    <!-- ==================== 打卡标签 ==================== -->
+    <div id="checkin" class="tab-content">
+        <div class="flex-between mb-10">
+            <input type="text" id="newCheckinName" placeholder="新打卡名称" style="flex:1; margin-right:8px;" />
+            <button id="addCheckinBtn">添加</button>
+        </div>
+        <div id="checkinList"></div>
+    </div>
+
+    <!-- ==================== TODO标签 ==================== -->
+    <div id="todo" class="tab-content">
+        <div class="flex-between mb-10">
+            <input type="text" id="newTodoText" placeholder="新任务" style="flex:1; margin-right:8px;" />
+            <select id="todoDeadlineSelect">
+                <option value="today">今天</option>
+                <option value="tomorrow">明天</option>
+                <option value="dayafter">后天</option>
+                <option value="week">一周内</option>
+                <option value="custom">自定义日期</option>
+            </select>
+            <input type="date" id="todoDeadlineCustom" class="hidden" style="width:auto; margin-left:6px;" />
+            <button id="addTodoBtn">添加</button>
+        </div>
+        <div id="todoList"></div>
+    </div>
+
+    <!-- ==================== 全局模态框 ==================== -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <button class="close-btn" id="modalClose">&times;</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 1. 数据模型 & localStorage
+        // ============================================================
+        let data = {
+            checkins: [],
+            todos: []
+        };
+
+        function loadData() {
+            const raw = localStorage.getItem('fullCheckinData');
+            if (raw) {
+                data = JSON.parse(raw);
+                data.checkins.forEach(c => { if (!c.history) c.history = []; });
+                data.todos.forEach(t => { if (!t.history) t.history = []; if (!t.createdDate) t.createdDate = today(); });
+            }
+        }
+        function saveData() {
+            localStorage.setItem('fullCheckinData', JSON.stringify(data));
+        }
+        function today() { return new Date().toISOString().split('T')[0]; }
+        function nowTime() {
+            const d = new Date();
+            return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+        }
+        function genId() { return Date.now() + Math.random(); }
+
+        function monthDays(year, month) {
+            return new Date(year, month, 0).getDate();
+        }
+        function firstDayOfMonth(year, month) {
+            return new Date(year, month-1, 1).getDay();
+        }
+        function formatDate(y,m,d) { return y+'-'+(m+'').padStart(2,'0')+'-'+(d+'').padStart(2,'0'); }
+
+        function formatDuration(minutes) {
+            if (!minutes || minutes <= 0) return '';
+            const h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            if (h > 0 && m > 0) return h + 'h' + m + 'min';
+            if (h > 0) return h + 'h';
+            return m + 'min';
+        }
+
+        // ============================================================
+        // 2. 日历渲染
+        // ============================================================
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth() + 1;
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const title = document.getElementById('monthTitle');
+            title.textContent = currentYear + '年' + currentMonth + '月';
+
+            const daysInMonth = monthDays(currentYear, currentMonth);
+            const firstDay = firstDayOfMonth(currentYear, currentMonth);
+            const prevMonthDays = monthDays(currentYear, currentMonth - 1);
+
+            const checkedDates = new Set();
+            data.checkins.forEach(c => {
+                c.history.forEach(h => { checkedDates.add(h.date); });
+            });
+            data.todos.forEach(t => {
+                t.history.forEach(h => { checkedDates.add(h.date); });
+                if (t.done && t.history.length === 0 && t.createdDate) checkedDates.add(t.createdDate);
+            });
+
+            let html = '';
+            const weekDays = ['日','一','二','三','四','五','六'];
+            weekDays.forEach(d => html += `<div style="font-weight:bold;padding:4px;">${d}</div>`);
+
+            for (let i = 0; i < firstDay; i++) {
+                html += `<div class="calendar-day other-month">${prevMonthDays - firstDay + i + 1}</div>`;
+            }
+            const todayStr = today();
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = formatDate(currentYear, currentMonth, d);
+                let cls = 'calendar-day';
+                if (dateStr === todayStr) cls += ' today';
+                if (checkedDates.has(dateStr)) cls += ' checked';
+                html += `<div class="${cls}" data-date="${dateStr}">${d}</div>`;
+            }
+            const totalCells = firstDay + daysInMonth;
+            const remaining = 7 - (totalCells % 7);
+            if (remaining < 7) {
+                for (let i = 1; i <= remaining; i++) {
+                    html += `<div class="calendar-day other-month">${i}</div>`;
+                }
+            }
+            grid.innerHTML = html;
+
+            grid.querySelectorAll('.calendar-day:not(.other-month)').forEach(el => {
+                el.addEventListener('click', function() {
+                    const date = this.dataset.date;
+                    showDayDetail(date);
+                });
+            });
+        }
+
+        function showDayDetail(date) {
+            const container = document.getElementById('dayDetail');
+            let html = `<h3 style="margin-bottom:10px;">📌 ${date} 的记录</h3>`;
+
+            const checkinRecords = [];
+            data.checkins.forEach(c => {
+                c.history.forEach(h => {
+                    if (h.date === date) {
+                        checkinRecords.push({ type: 'checkin', name: c.name, ...h });
+                    }
+                });
+            });
+            const todoRecords = [];
+            data.todos.forEach(t => {
+                t.history.forEach(h => {
+                    if (h.date === date) {
+                        todoRecords.push({ type: 'todo', text: t.text, ...h });
+                    }
+                });
+            });
+
+            if (checkinRecords.length === 0 && todoRecords.length === 0) {
+                html += '<p style="color:#999;">当天无记录</p>';
+            } else {
+                html += '<div>';
+                const all = [...checkinRecords, ...todoRecords].sort((a,b) => a.time.localeCompare(b.time));
+                all.forEach(r => {
+                    const moodEmojis = ['😊','🙂','😐','😟','😢'];
+                    const mood = typeof r.mood === 'number' ? moodEmojis[r.mood] || '' : '';
+                    const duration = formatDuration(r.durationMin);
+                    const typeLabel = r.type === 'checkin' ? '✅ 打卡' : '📋 TODO';
+                    html += `
+                        <div class="record-item">
+                            <div class="header">
+                                <span>${typeLabel} ${r.type==='checkin'?r.name:r.text}</span>
+                                <span class="mood">${mood}</span>
+                            </div>
+                            <div style="font-size:13px;color:#666;">
+                                ${r.time}${duration ? ' · ' + duration : ''}
+                            </div>
+                            ${r.note ? '<div class="note">📝 ' + r.note + '</div>' : ''}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            html += `<div class="mt-10"><button class="outline" onclick="showDayModal('${date}')">查看完整记录</button></div>`;
+            container.innerHTML = html;
+        }
+
+        function showDayModal(date) {
+            const modal = document.getElementById('modalOverlay');
+            const body = document.getElementById('modalBody');
+            let html = `<h3>📅 ${date} 的完整记录</h3>`;
+            html += `<h4>长期打卡</h4>`;
+            data.checkins.forEach(c => {
+                const record = c.history.find(h => h.date === date);
+                if (record) {
+                    const moodEmojis = ['😊','🙂','😐','😟','😢'];
+                    const mood = typeof record.mood === 'number' ? moodEmojis[record.mood] : '';
+                    const duration = formatDuration(record.durationMin);
+                    html += `<div class="record-item"><span>✅ ${c.name}</span> ${mood} ${record.time} ${duration} ${record.note ? '<br>📝 '+record.note : ''}</div>`;
+                } else {
+                    html += `<div style="color:#999;">⬜ ${c.name} (未打卡)</div>`;
+                }
+            });
+            html += `<h4>短期任务 TODO</h4>`;
+            data.todos.forEach(t => {
+                const record = t.history.find(h => h.date === date);
+                if (record) {
+                    const moodEmojis = ['😊','🙂','😐','😟','😢'];
+                    const mood = typeof record.mood === 'number' ? moodEmojis[record.mood] : '';
+                    const duration = formatDuration(record.durationMin);
+                    html += `<div class="record-item">${t.done ? '✅' : '⬜'} ${t.text} ${mood} ${record.time} ${duration} ${record.note ? '<br>📝 '+record.note : ''}</div>`;
+                } else {
+                    html += `<div style="color:#999;">⬜ ${t.text}</div>`;
+                }
+            });
+            html += `<div class="mt-10"><button onclick="closeModal()">关闭</button></div>`;
+            body.innerHTML = html;
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('show');
+        }
+        document.getElementById('modalClose').addEventListener('click', closeModal);
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        document.getElementById('prevMonth').addEventListener('click', () => {
+            currentMonth--;
+            if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+            renderCalendar();
+        });
+        document.getElementById('nextMonth').addEventListener('click', () => {
+            currentMonth++;
+            if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+            renderCalendar();
+        });
+
+        // ============================================================
+        // 3. 长期打卡功能
+        // ============================================================
+        function renderCheckins() {
+            const list = document.getElementById('checkinList');
+            if (data.checkins.length === 0) {
+                list.innerHTML = '<p style="color:#999;text-align:center;">暂无长期打卡，添加一个吧</p>';
+                return;
+            }
+            let html = '';
+            data.checkins.forEach((c, idx) => {
+                const todayStr = today();
+                const todayRecord = c.history.find(h => h.date === todayStr);
+                const totalDays = c.history.length;
+                let streak = 0;
+                let d = new Date();
+                while (true) {
+                    const dateStr = d.toISOString().split('T')[0];
+                    if (c.history.some(h => h.date === dateStr)) {
+                        streak++;
+                        d.setDate(d.getDate() - 1);
+                    } else break;
+                }
+                const moodEmojis = ['😊','🙂','😐','😟','😢'];
+                const moodIcon = todayRecord && typeof todayRecord.mood === 'number' ? moodEmojis[todayRecord.mood] : '';
+                const duration = todayRecord ? formatDuration(todayRecord.durationMin) : '';
+                html += `
+                    <div class="card" data-idx="${idx}">
+                        <div class="info">
+                            <div class="name">${c.name}</div>
+                            <div class="meta">连续 ${streak} 天 / 总计 ${totalDays} 天</div>
+                            ${todayRecord ? `<div class="meta" style="color:#4caf50;">今日已打卡 ${moodIcon} ${todayRecord.time} ${duration}</div>` : '<div class="meta" style="color:#f44336;">今日未打卡</div>'}
+                        </div>
+                        <div class="actions">
+                            <button class="${todayRecord ? 'primary' : ''}" onclick="checkinToday(${idx})">${todayRecord ? '✅ 已打卡' : '打卡'}</button>
+                            <button onclick="viewCheckinMonth(${idx})">📅 月视图</button>
+                            <button class="danger" onclick="deleteCheckin(${idx})">删除</button>
+                        </div>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+        function checkinToday(idx) {
+            const todayStr = today();
+            const c = data.checkins[idx];
+            const existing = c.history.find(h => h.date === todayStr);
+            if (existing) {
+                // 已有记录 -> 显示详情并可编辑
+                showCheckinRecord(c, existing, idx);
+                return;
+            }
+            openCheckinModal(c, idx);
+        }
+
+        function showCheckinRecord(c, record, idx) {
+            const modal = document.getElementById('modalOverlay');
+            const body = document.getElementById('modalBody');
+            const moodEmojis = ['😊','🙂','😐','😟','😢'];
+            const mood = typeof record.mood === 'number' ? moodEmojis[record.mood]+' '+['开心','还不错','平静','有点坏','糟糕'][record.mood] : '';
+            const duration = formatDuration(record.durationMin);
+            body.innerHTML = `
+                <h3>✅ ${c.name}</h3>
+                <div class="small-gray">完成时间：${record.time}</div>
+                <p>心情: ${mood}</p>
+                <p>时长: ${duration || '未记录'}</p>
+                <p>备注: ${record.note || '无'}</p>
+                <div class="mt-10 flex-between">
+                    <button onclick="closeModal()">关闭</button>
+                    <button class="primary" onclick="editCheckinRecord(${idx},'${record.time}')">编辑</button>
+                </div>
+            `;
+            modal.classList.add('show');
+        }
+
+        // 编辑打卡记录：重新弹出修改界面，预填数据
+        function editCheckinRecord(idx, recordTime) {
+            closeModal(); // 先关闭详情
+            const c = data.checkins[idx];
+            const todayStr = today();
+            const record = c.history.find(h => h.date === todayStr && h.time === recordTime);
+            if (!record) return;
+            openCheckinModal(c, idx, record);
+        }
+
+        // 通用打卡模态框：若 record 为 null 则新建，否则编辑
+        function openCheckinModal(checkin, idx, record) {
+            const modal = document.getElementById('modalOverlay');
+            const body = document.getElementById('modalBody');
+            const todayStr = today();
+            const isEdit = !!record;
+
+            const defaultTime = isEdit ? record.time : nowTime();
+            const defaultEndTime = isEdit ? (record.endTime || '') : '';
+            const defaultMood = isEdit ? record.mood : null;
+            const defaultNote = isEdit ? (record.note || '') : '';
+            const defaultStart = isEdit ? defaultTime : ''; // 编辑时预填时间
+
+            body.innerHTML = `
+                <h3>${isEdit ? '✏️ 编辑打卡: ' : '✅ 打卡: '}${checkin.name}</h3>
+                <div class="small-gray">完成建立时间：${defaultTime}</div>
+                <p>日期: ${todayStr}</p>
+                <div class="mood-buttons">
+                    <button class="mood-btn" data-mood="0">😊</button>
+                    <button class="mood-btn" data-mood="1">🙂</button>
+                    <button class="mood-btn" data-mood="2">😐</button>
+                    <button class="mood-btn" data-mood="3">😟</button>
+                    <button class="mood-btn" data-mood="4">😢</button>
+                </div>
+                <div class="mt-10">
+                    <label>开始时间</label>
+                    <input type="time" id="checkinStart" value="${defaultStart}" />
+                </div>
+                <div class="mt-10">
+                    <label>结束时间</label>
+                    <input type="time" id="checkinEnd" value="${defaultEndTime}" />
+                </div>
+                <div class="mt-10">
+                    <label>文字记录</label>
+                    <textarea id="checkinNote" placeholder="记录今天的感受...">${defaultNote}</textarea>
+                </div>
+                <div class="mt-10 flex-between">
+                    <button class="danger" onclick="closeModal()">取消</button>
+                    <button id="saveCheckinRecord" class="primary">${isEdit ? '保存修改' : '保存打卡'}</button>
+                </div>
+            `;
+            modal.classList.add('show');
+
+            let selectedMood = defaultMood;
+            body.querySelectorAll('.mood-btn').forEach(btn => {
+                if (parseInt(btn.dataset.mood) === defaultMood) btn.classList.add('selected');
+                btn.addEventListener('click', function() {
+                    body.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedMood = parseInt(this.dataset.mood);
+                });
+            });
+
+            document.getElementById('saveCheckinRecord').addEventListener('click', function() {
+                if (selectedMood === null) { alert('请选择心情'); return; }
+                const startTime = document.getElementById('checkinStart').value;
+                const endTime = document.getElementById('checkinEnd').value;
+                // 时间可选，如果空则不计算duration
+                let durationMin = 0;
+                let recordTime = defaultTime;
+                if (startTime && endTime) {
+                    const [sh, sm] = startTime.split(':').map(Number);
+                    const [eh, em] = endTime.split(':').map(Number);
+                    const startMinutes = sh * 60 + sm;
+                    const endMinutes = eh * 60 + em;
+                    durationMin = endMinutes - startMinutes;
+                    if (durationMin < 0) durationMin += 24 * 60;
+                    recordTime = startTime;
+                } else {
+                    // 如果没有指定起止时间，使用完成时间作为记录时间
+                    recordTime = defaultTime;
+                }
+                const note = document.getElementById('checkinNote').value.trim();
+
+                if (isEdit) {
+                    // 更新记录
+                    record.mood = selectedMood;
+                    record.time = recordTime;
+                    record.endTime = endTime || '';
+                    record.durationMin = durationMin;
+                    record.note = note;
+                } else {
+                    const newRecord = {
+                        date: todayStr,
+                        time: recordTime,
+                        endTime: endTime || '',
+                        durationMin: durationMin,
+                        mood: selectedMood,
+                        note: note
+                    };
+                    checkin.history.push(newRecord);
+                }
+                saveData();
+                closeModal();
+                renderCheckins();
+                renderCalendar();
+                showDayDetail(todayStr);
+            });
+        }
+
+        function viewCheckinMonth(idx) {
+            const c = data.checkins[idx];
+            const modal = document.getElementById('modalOverlay');
+            const body = document.getElementById('modalBody');
+            const year = currentYear, month = currentMonth;
+            const daysInMonth = monthDays(year, month);
+            let html = `<h3>📅 ${c.name} - ${year}年${month}月</h3>`;
+            html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-top:10px;">`;
+            const weekDays = ['日','一','二','三','四','五','六'];
+            weekDays.forEach(d => html += `<div style="font-weight:bold;">${d}</div>`);
+            const firstDay = firstDayOfMonth(year, month);
+            for (let i = 0; i < firstDay; i++) html += '<div></div>';
+            const todayStr = today();
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = formatDate(year, month, d);
+                const record = c.history.find(h => h.date === dateStr);
+                let bg = 'white';
+                if (dateStr === todayStr) bg = '#fff3e0';
+                else if (record) bg = '#e8f5e9';
+                else if (dateStr < todayStr) bg = '#fce4ec';
+                else bg = '#f5f5f5';
+                html += `<div style="background:${bg}; border-radius:6px; padding:4px; cursor:pointer;" onclick="showRecordDetail(${idx},'${dateStr}')">${d}</div>`;
+            }
+            html += `</div>`;
+            html += `<div class="mt-10"><button onclick="closeModal()">关闭</button></div>`;
+            body.innerHTML = html;
+            modal.classList.add('show');
+        }
+
+        function showRecordDetail(idx, dateStr) {
+            const c = data.checkins[idx];
+            const record = c.history.find(h => h.date === dateStr);
+            if (!record) {
+                alert('当天无打卡记录');
+                return;
+            }
+            const moodEmojis = ['😊','🙂','😐','😟','😢'];
+            const mood = typeof record.mood === 'number' ? moodEmojis[record.mood]+' '+['开心','还不错','平静','有点坏','糟糕'][record.mood] : '';
+            const duration = formatDuration(record.durationMin);
+            alert(`📅 ${dateStr}\n时间: ${record.time} - ${record.endTime || ''}\n心情: ${mood}\n时长: ${duration || '无'}\n备注: ${record.note || '无'}`);
+        }
+
+        function deleteCheckin(idx) {
+            if (!confirm('确认删除此打卡？')) return;
+            data.checkins.splice(idx, 1);
+            saveData();
+            renderCheckins();
+            renderCalendar();
+        }
+
+        document.getElementById('addCheckinBtn').addEventListener('click', () => {
+            const input = document.getElementById('newCheckinName');
+            const name = input.value.trim();
+            if (!name) { alert('请输入名称'); return; }
+            data.checkins.push({ id: genId(), name, history: [] });
+            saveData();
+            renderCheckins();
+            input.value = '';
+        });
+
+        // ============================================================
+        // 4. TODO功能
+        // ============================================================
+        function renderTodos() {
+            const list = document.getElementById('todoList');
+            const todayStr = today();
+            const relevant = data.todos.filter(t => {
+                if (t.done && t.history.some(h => h.date === todayStr)) return true;
+                if (!t.done && t.deadline && t.deadline >= todayStr) return true;
+                if (!t.done && !t.deadline) return true;
+                return false;
+            });
+            relevant.sort((a,b) => {
+                if (a.done !== b.done) return a.done ? 1 : -1;
+                return b.createdDate.localeCompare(a.createdDate) || b.id - a.id;
+            });
+            if (relevant.length === 0) {
+                list.innerHTML = '<p style="color:#999;text-align:center;">今日暂无任务</p>';
+                return;
+            }
+            let html = '';
+            relevant.forEach(t => {
+                const realIdx = data.todos.indexOf(t);
+                const todayRecord = t.history.find(h => h.date === todayStr);
+                const isDone = t.done;
+                let deadlineText = '';
+                if (t.deadline) {
+                    const daysLeft = Math.ceil((new Date(t.deadline) - new Date()) / (1000*60*60*24));
+                    if (daysLeft > 0) deadlineText = `剩余 ${daysLeft} 天`;
+                    else if (daysLeft === 0) deadlineText = '今天截止';
+                    else deadlineText = '已过期';
+                }
+                const moodEmojis = ['😊','🙂','😐','😟','😢'];
+                const moodIcon = todayRecord && typeof todayRecord.mood === 'number' ? moodEmojis[todayRecord.mood] : '';
+                const duration = todayRecord ? formatDuration(todayRecord.durationMin) : '';
+                html += `
+                    <div class="card" style="${isDone ? 'background:#f0f9f0;' : ''}">
+                        <div class="info">
+                            <div class="name ${isDone ? 'todo-done' : ''}" style="${!isDone && t.deadline && new Date(t.deadline) < new Date() ? 'color:#f44336;' : ''}">
+                                ${t.text}
+                            </div>
+                            <div class="meta">
+                                ${deadlineText ? '<span class="todo-deadline">⏰ '+deadlineText+'</span>' : ''}
+                                ${todayRecord ? `<span style="color:#4caf50;"> ✅ 已完成 ${moodIcon} ${todayRecord.time} ${duration}</span>` : (isDone ? '✅ 已完成' : '⬜ 未完成')}
+                            </div>
+                        </div>
+                        <div class="actions">
+                            ${!isDone ? `<button onclick="completeTodo(${realIdx})">完成</button>` : `<button class="primary" onclick="viewTodoRecord(${realIdx})">查看</button>`}
+                            <button class="danger" onclick="deleteTodo(${realIdx})">删除</button>
+                        </div>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+        function completeTodo(idx) {
+            const todayStr = today();
+            const t = data.todos[idx];
+            // 检查今天是否已完成
+            const existing = t.history.find(h => h.date === todayStr);
+            if (existing) {
+                viewTodoRecord(idx);
+                return;
+            }
+            openTodoCompleteModal(t, idx);
+        }
+
+        function viewTodoRecord(idx) {
+            const t = data.todos[idx];
+            const todayStr = today();
+            const record = t.history.find(h => h.date === todayStr) || t.history[t.history.length-1];
+            if (!record) { alert('无记录'); return; }
+            const moodEmojis = ['😊','🙂','😐','😟','😢'];
+            const mood = typeof record.mood === 'number' ? moodEmojis[record.mood]+' '+['开心','还不错','平静','有点坏','糟糕'][record.mood] : '';
+            const duration = formatDuration(record.durationMin);
+            const modal = document.getElementById('modalOverlay');
+            const body = document.getElementById('modalBody');
+            body.innerHTML = `
+                <h3>✅ ${t.text}</h3>
+                <div class="small-gray">完成时间：${record.time}</div>
+                <p>心情: ${mood}</p>
+                <p>时长: ${duration || '未记录'}</p>
+                <p>备注: ${record.note || '无'}</p>
+                <div class="mt-10 flex-between">
+                    <button onclick="closeModal()">关闭</button>
+                    <button class="primary" onclick="editTodoRecord(${idx})">编辑</button>
+                </div>
+            `;
+            modal.classList.add('show');
+        }
+
+        function editTodoRecord(idx) {
+            closeModal();
+            const t = data.todos[idx];
+            const todayStr = today();
+            const record = t.history.find(h => h.date === todayStr) || t.history[t.history.length-1];
+            if (!record) return;
+            openTodoCompleteModal(t, idx, record);
+        }
+
+        function openTodoCompleteModal(t, idx, record) {
+            const modal = document.getElementById('modalOverlay');
+            const body = document.getElementById('modalBody');
+            const todayStr = today();
+            const isEdit = !!record;
+            const defaultTime = isEdit ? record.time : nowTime();
+            const defaultEndTime = isEdit ? (record.endTime || '') : '';
+            const defaultMood = isEdit ? record.mood : null;
+            const defaultNote = isEdit ? (record.note || '') : '';
+            const defaultStart = isEdit ? defaultTime : '';
+
+            body.innerHTML = `
+                <h3>${isEdit ? '✏️ 编辑任务: ' : '✅ 完成任务: '}${t.text}</h3>
+                <div class="small-gray">完成建立时间：${defaultTime}</div>
+                <p>日期: ${todayStr}</p>
+                <div class="mood-buttons">
+                    <button class="mood-btn" data-mood="0">😊</button>
+                    <button class="mood-btn" data-mood="1">🙂</button>
+                    <button class="mood-btn" data-mood="2">😐</button>
+                    <button class="mood-btn" data-mood="3">😟</button>
+                    <button class="mood-btn" data-mood="4">😢</button>
+                </div>
+                <div class="mt-10">
+                    <label>开始时间</label>
+                    <input type="time" id="todoStart" value="${defaultStart}" />
+                </div>
+                <div class="mt-10">
+                    <label>结束时间</label>
+                    <input type="time" id="todoEnd" value="${defaultEndTime}" />
+                </div>
+                <div class="mt-10">
+                    <label>文字记录</label>
+                    <textarea id="todoNote" placeholder="任务完成感受...">${defaultNote}</textarea>
+                </div>
+                <div class="mt-10 flex-between">
+                    <button class="danger" onclick="closeModal()">取消</button>
+                    <button id="saveTodoRecord" class="primary">${isEdit ? '保存修改' : '完成任务'}</button>
+                </div>
+            `;
+            modal.classList.add('show');
+
+            let selectedMood = defaultMood;
+            body.querySelectorAll('.mood-btn').forEach(btn => {
+                if (parseInt(btn.dataset.mood) === defaultMood) btn.classList.add('selected');
+                btn.addEventListener('click', function() {
+                    body.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedMood = parseInt(this.dataset.mood);
+                });
+            });
+
+            document.getElementById('saveTodoRecord').addEventListener('click', function() {
+                if (selectedMood === null) { alert('请选择心情'); return; }
+                const startTime = document.getElementById('todoStart').value;
+                const endTime = document.getElementById('todoEnd').value;
+                let durationMin = 0;
+                let recordTime = defaultTime;
+                if (startTime && endTime) {
+                    const [sh, sm] = startTime.split(':').map(Number);
+                    const [eh, em] = endTime.split(':').map(Number);
+                    const startMinutes = sh * 60 + sm;
+                    const endMinutes = eh * 60 + em;
+                    durationMin = endMinutes - startMinutes;
+                    if (durationMin < 0) durationMin += 24 * 60;
+                    recordTime = startTime;
+                }
+                const note = document.getElementById('todoNote').value.trim();
+
+                if (isEdit) {
+                    record.mood = selectedMood;
+                    record.time = recordTime;
+                    record.endTime = endTime || '';
+                    record.durationMin = durationMin;
+                    record.note = note;
+                } else {
+                    const newRecord = {
+                        date: todayStr,
+                        time: recordTime,
+                        endTime: endTime || '',
+                        durationMin: durationMin,
+                        mood: selectedMood,
+                        note: note
+                    };
+                    t.history.push(newRecord);
+                    t.done = true;
+                }
+                saveData();
+                closeModal();
+                renderTodos();
+                renderCalendar();
+                showDayDetail(todayStr);
+            });
+        }
+
+        function deleteTodo(idx) {
+            if (!confirm('确认删除此任务？')) return;
+            data.todos.splice(idx, 1);
+            saveData();
+            renderTodos();
+            renderCalendar();
+        }
+
+        document.getElementById('addTodoBtn').addEventListener('click', () => {
+            const input = document.getElementById('newTodoText');
+            const text = input.value.trim();
+            if (!text) { alert('请输入任务'); return; }
+            const deadlineSelect = document.getElementById('todoDeadlineSelect');
+            const customInput = document.getElementById('todoDeadlineCustom');
+            let deadline = null;
+            const todayStr = today();
+            const d = new Date();
+            switch (deadlineSelect.value) {
+                case 'today': deadline = todayStr; break;
+                case 'tomorrow': d.setDate(d.getDate()+1); deadline = d.toISOString().split('T')[0]; break;
+                case 'dayafter': d.setDate(d.getDate()+2); deadline = d.toISOString().split('T')[0]; break;
+                case 'week': d.setDate(d.getDate()+7); deadline = d.toISOString().split('T')[0]; break;
+                case 'custom': deadline = customInput.value; break;
+            }
+            if (deadlineSelect.value === 'custom' && !deadline) { alert('请选择自定义日期'); return; }
+            data.todos.push({
+                id: genId(),
+                text: text,
+                done: false,
+                createdDate: todayStr,
+                deadline: deadline || null,
+                history: []
+            });
+            saveData();
+            renderTodos();
+            renderCalendar();
+            input.value = '';
+        });
+
+        document.getElementById('todoDeadlineSelect').addEventListener('change', function() {
+            const custom = document.getElementById('todoDeadlineCustom');
+            if (this.value === 'custom') {
+                custom.classList.remove('hidden');
+                custom.value = today();
+            } else {
+                custom.classList.add('hidden');
+            }
+        });
+
+        // ============================================================
+        // 5. 标签切换
+        // ============================================================
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(this.dataset.tab).classList.add('active');
+                if (this.dataset.tab === 'calendar') renderCalendar();
+                if (this.dataset.tab === 'checkin') renderCheckins();
+                if (this.dataset.tab === 'todo') renderTodos();
+            });
+        });
+
+        // ============================================================
+        // 6. 初始化
+        // ============================================================
+        loadData();
+        renderCalendar();
+        renderCheckins();
+        renderTodos();
+        document.querySelector('[data-tab="calendar"]').click();
+    </script>
+</body>
+</html>
