@@ -509,7 +509,7 @@ function getBeijingNow() {
   return d.getHours() * 60 + d.getMinutes();
 }
 // ============================================================
-// 2. 日历渲染
+// 2. 日历渲染（完全保留原始代码，仅追加自由记录标记）
 // ============================================================
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
@@ -528,6 +528,7 @@ function renderCalendar() {
     t.history.forEach(h => { checkedDates.add(h.date); });
     if (t.done && t.history.length === 0 && t.createdDate) checkedDates.add(t.createdDate);
   });
+  // 仅追加：自由记录标记到日历
   data.freeRecords.forEach(r => {
     checkedDates.add(r.date);
   });
@@ -561,6 +562,7 @@ function renderCalendar() {
     });
   });
 }
+// showDayDetail 和 showDayModal 均保留原始结构，仅追加自由记录显示
 function showDayDetail(date) {
   const container = document.getElementById('dayDetail');
   let html = `<h3 style="margin-bottom:10px;">📌 ${date}的记录</h3>`;
@@ -580,6 +582,7 @@ function showDayDetail(date) {
       }
     });
   });
+  // 追加自由记录
   const freeRecords = data.freeRecords.filter(r => r.date === date);
 
   if (checkinRecords.length === 0 && todoRecords.length === 0 && freeRecords.length === 0) {
@@ -648,6 +651,7 @@ function showDayModal(date) {
       html += `<div style="color:#999;">⬜ ${t.text}</div>`;
     }
   });
+  // 追加自由记录
   const freeOnDate = data.freeRecords.filter(r => r.date === date);
   if (freeOnDate.length > 0) {
     html += `<h4>📝 自由记录</h4>`;
@@ -680,7 +684,7 @@ document.getElementById('nextMonth').addEventListener('click', () => {
   renderCalendar();
 });
 // ============================================================
-// 3. 长期打卡功能
+// 3. 长期打卡功能（完全保留原始代码，不做任何修改）
 // ============================================================
 function renderCheckins() {
   const list = document.getElementById('checkinList');
@@ -906,7 +910,7 @@ document.getElementById('addCheckinBtn').addEventListener('click', () => {
   input.value = '';
 });
 // ============================================================
-// 4. TODO功能
+// 4. TODO功能（完全保留原始代码，不做任何修改）
 // ============================================================
 function renderTodos() {
   const list = document.getElementById('todoList');
@@ -1137,7 +1141,7 @@ document.getElementById('todoDeadlineSelect').addEventListener('change', functio
   }
 });
 // ============================================================
-// 5. 标签切换
+// 5. 标签切换（完全保留原始代码）
 // ============================================================
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', function () {
@@ -1151,7 +1155,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 // ============================================================
-// 6. 侧边栏
+// 6. 侧边栏（新增）
 // ============================================================
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebar');
@@ -1173,14 +1177,13 @@ sidebarToggle.addEventListener('click', () => {
 });
 sidebarOverlay.addEventListener('click', closeSidebar);
 
-// 侧边栏菜单
 document.querySelector('[data-sidemenu="record"]').addEventListener('click', function () {
   closeSidebar();
   openFreeRecordFlow();
 });
 
 // ============================================================
-// 7. 记录功能
+// 7. 记录功能（全新追加，不触碰任何原有代码）
 // ============================================================
 const freeRecordOverlay = document.getElementById('freeRecordOverlay');
 const freeRecordBody = document.getElementById('freeRecordBody');
@@ -1205,7 +1208,7 @@ function openFreeRecordFlow() {
   showRecordMainView();
 }
 
-// 主界面：输入框 + 今日记录列表
+// 主界面：上方输入框 + 下方今日记录列表
 function showRecordMainView() {
   const body = freeRecordBody;
   const todayStr = today();
@@ -1261,7 +1264,6 @@ function showRecordMainView() {
   });
 }
 
-// 选择模式
 function showFreeRecordModeSelect(name) {
   const body = freeRecordBody;
   body.innerHTML = `
@@ -1283,7 +1285,6 @@ function showFreeRecordModeSelect(name) {
   });
 }
 
-// 计时模式选择
 function showTimerSelection(name) {
   const body = freeRecordBody;
   body.innerHTML = `
@@ -1314,7 +1315,6 @@ function showTimerSelection(name) {
   });
 }
 
-// 计时器全局变量
 let _timerStartTime = null;
 let _timerEndTime = null;
 let _timerMode = null;
@@ -1334,7 +1334,7 @@ function startCountdown(name, minutes) {
       <div class="timer-display" id="timerDisplay">${formatTimer(_timerTotalSeconds)}</div>
       <div class="timer-bar"><div class="timer-bar-inner" id="timerBarInner" style="width:100%;"></div></div>
       <p style="font-size:13px;color:#999;margin-bottom:16px;">开始时间: ${formatTimeForDisplay(_timerStartTime)}</p>
-      <button class="fs-btn primary" id="timerComplete" style="width:100%;">✅ 完成</button>
+      <button class="fs-btn primary" id="timerComplete" style="width:100%;">完成</button>
     </div>
   `;
   document.getElementById('timerComplete').addEventListener('click', function () {
@@ -1368,7 +1368,7 @@ function startStopwatch(name) {
       <p style="color:#888;margin-bottom:8px;">正计时中</p>
       <div class="timer-display" id="timerDisplay">00:00:00</div>
       <p style="font-size:13px;color:#999;margin-bottom:16px;">开始时间: ${formatTimeForDisplay(_timerStartTime)}</p>
-      <button class="fs-btn primary" id="timerComplete" style="width:100%;">✅ 完成</button>
+      <button class="fs-btn primary" id="timerComplete" style="width:100%;">完成</button>
     </div>
   `;
   document.getElementById('timerComplete').addEventListener('click', function () {
@@ -1415,7 +1415,6 @@ function completeTimer(name) {
   showFreeCompleteForm(name, startStr, endStr, durationMin);
 }
 
-// 完成填写页面
 function showFreeCompleteForm(name, autoStart, autoEnd, autoDuration) {
   const body = freeRecordBody;
   const todayStr = today();
@@ -1510,14 +1509,13 @@ function showFreeCompleteForm(name, autoStart, autoEnd, autoDuration) {
     data.freeRecords.push(record);
     saveData();
 
-    alert('✅ 记录已保存！');
+    alert('记录已保存！');
     closeFreeRecord();
     renderCalendar();
     showDayDetail(todayStr);
   });
 }
 
-// 查看记录详情（查看功能已删除，保留编辑用）
 function editFreeRecordInFlow(idx) {
   const r = data.freeRecords[idx];
   if (!r) return;
@@ -1590,7 +1588,7 @@ function editFreeRecordInFlow(idx) {
     r.note = note;
     saveData();
 
-    alert('✅ 修改已保存！');
+    alert('修改已保存！');
     document.getElementById('freeRecordTitle').textContent = '📝 记录';
     showRecordMainView();
     renderCalendar();
@@ -1608,7 +1606,7 @@ function deleteFreeRecordInFlow(idx) {
 }
 
 // ============================================================
-// 8. 初始化
+// 8. 初始化（完全保留原始代码）
 // ============================================================
 loadData();
 renderCalendar();
